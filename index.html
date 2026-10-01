@@ -437,7 +437,7 @@ const store={
   get(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } },
   set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 };
-const VERSION='第15版（10月1日）';
+const VERSION='第16版（10月1日）';
 $('verTxt').textContent='いまの版：'+VERSION;
 // 番付サーバー（Google Apps Script）の受付URL
 const API_URL='https://script.google.com/macros/s/AKfycbyUC-2WnnSL9dkfJ6UBohXuiVvi_G-56M83afpw2Y4oGym2SWg2i6D6ITJbSYfABPZN/exec';
@@ -1349,6 +1349,11 @@ function mkCart(on){
 }
 
 const obs=[], coins=[];
+// 鬼火は「下（跳ぶ）」か「上（滑る）」のどちらかに固定
+function addOnibi(x,z,high){
+  const cy=high?1.58:.48;
+  return addOb('onibi',x,z,{cy,y0:cy-.42,y1:cy+.42,ph:rand(0,6.28),high});
+}
 function addOb(type,x,z,extra){
   const o=BUILD[type](); o.type=type; o.x=x; o.z=z; o.vz=0; o.parked=false; o.passed=false;
   Object.assign(o,extra||{});
@@ -1383,7 +1388,9 @@ function speedFn(rt){
   return Math.min(cap,17+31*(1-Math.exp(-rt/65))+rt*.045+stageIdx*2.5);
 }
 const diff=()=>clamp(runTime/110+stageIdx*.12,0,1);
-function gapFn(){ return speed*Math.max(.36,lerp(.95,.52,diff())-stageIdx*.035)+rand(0,Math.max(2,7-stageIdx)); }
+// 間隔のゆらぎ：詰まる（30%）・普通（50%）・ひと息（20%）。ただし避け切れる最短時間は守る
+function gapMul(){ const r=Math.random(); return r<.3?rand(.6,.82):r<.8?rand(.9,1.15):rand(1.3,1.8); }
+function gapFn(){ const t=Math.max(.36,lerp(.95,.52,diff())-stageIdx*.035)*gapMul(); return speed*Math.max(.5,t); }
 
 function spawnPattern(z){
   const d=diff(), si=stageIdx, th=si%4;
@@ -1440,9 +1447,9 @@ function spawnPattern(z){
       const side=Math.random()<.5?-1:1; addOb('mikoshi',side*1.1,z,{vz:rand(7,10)+Math.min(si,6)*.5});
       addCoins(side<0?2:0,z+6,6); return speed*.4;
     }
-    case 'onibiRow':{ [0,1,2].forEach(l=>addOb('onibi',LANES[l],z,{ph:rand(0,6.28),w0:rand(2.2,3.2)})); return 0; }
+    case 'onibiRow':{ [0,1,2].forEach(l=>addOnibi(LANES[l],z,Math.random()<.5)); return 0; }
     case 'onibiLane':{
-      addOb('onibi',LANES[lane],z,{ph:rand(0,6.28),w0:rand(2.4,3.4)});
+      addOnibi(LANES[lane],z,Math.random()<.5);
       others(lane).forEach(l=>addOb('cart',LANES[l],z)); return 0;
     }
     case 'gauntlet':{
@@ -1867,7 +1874,7 @@ function kamiSpawn(z){
     case 'sekiya': addOb('sekiya',0,z); return 0;
     case 'beam': addOb(Math.random()<.5?'beam':'gate',0,z); return 0;
     case 'log':{ const lg=addOb('log',0,z,{vz:rand(4,8)+d*4}); return sp*.4; }
-    case 'onibi': addOb('onibi',0,z,{ph:rand(0,6.28),w0:rand(1.8,2.6)+d}); return 0;
+    case 'onibi': addOnibi(0,z,Math.random()<.5); return 0;
     case 'jb':{ const g=sp*lerp(.88,.72,d); addOb('barrel',0,z); addOb('beam',0,z-g); return g; }
     case 'bj':{ const g=sp*lerp(.92,.76,d); addOb('beam',0,z); addOb('barrel',0,z-g); return g; }
     case 'bb':{ const g=sp*lerp(.88,.76,d); addOb('barrel',0,z); addOb('barrel',0,z-g); return g; }
@@ -1875,7 +1882,7 @@ function kamiSpawn(z){
   }
   return 0;
 }
-function kamiGap(){ const d=clamp(runTime/120,0,1); return speed*lerp(1.15,.62,d)+rand(0,speed*.15); }
+function kamiGap(){ const d=clamp(runTime/120,0,1); return speed*Math.max(.72,lerp(1.15,.62,d)*gapMul()); }
 function tReach(y){ y=Math.min(Math.max(y,0),2.6); return (JUMP_V-Math.sqrt(Math.max(0,JUMP_V*JUMP_V-2*GRAV*y)))/GRAV; }
 function kamiHud(pop){
   const c=$('kchain'); c.classList.toggle('on',mode==='kami'&&state==='play'&&kamiChain>0);
@@ -2162,7 +2169,7 @@ function stepPlay(h){
       if(!o.parked){ o.z+=o.vz*h; if(o.roll) o.roll.rotation.x+=o.vz*h/.45; }
     }
     if(o.type==='mover'){ o.ph+=o.w0*h; o.x=Math.sin(o.ph)*o.amp; }
-    if(o.type==='onibi'){ o.ph+=o.w0*h; const cy=1.4+.95*Math.sin(o.ph); o.y0=cy-.42; o.y1=cy+.42; o.body.position.y=cy; }
+    if(o.type==='onibi'){ o.ph+=3*h; o.body.position.y=o.cy+Math.sin(o.ph)*.07; }  // 当たり判定の高さは固定、見た目だけ少しゆらぐ
   }
   if(mode==='kami'){
     for(const o of obs){
