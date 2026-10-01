@@ -220,6 +220,18 @@ input:focus{ outline:2px solid var(--kin); outline-offset:1px; }
   box-shadow:inset 0 0 0 1px rgba(243,197,91,.5); color:var(--washi); word-break:break-all; -webkit-user-select:all; user-select:all; margin:0 0 10px; }
 .label{ margin:24px 0 8px; font-size:13px; font-weight:700; color:rgba(243,234,214,.8); }
 .hint{ font-size:12px; color:rgba(243,234,214,.62); line-height:1.7; margin:20px 0 0; }
+#sekiyaIn{ position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; display:grid; place-items:center; opacity:0; overflow:hidden; }
+#sekiyaIn .band{ position:absolute; left:-10%; right:-10%; top:36%; height:24%; transform:skewY(6deg);
+  background:repeating-linear-gradient(90deg, rgba(255,214,90,.92) 0 40px, rgba(224,68,43,.92) 40px 80px); box-shadow:0 0 40px rgba(255,200,80,.9); }
+#sekiyaIn .sub{ position:absolute; top:31%; width:100%; text-align:center; font-family:var(--brush); font-size:clamp(22px,6vw,32px); letter-spacing:.4em; color:#fff6dc; text-shadow:0 0 14px #e0442b, 0 2px 0 rgba(0,0,0,.5); }
+#sekiyaIn .word{ position:relative; font-family:var(--brush); font-size:clamp(84px,27vw,168px); color:#fffbe8; letter-spacing:.04em;
+  text-shadow:0 0 30px #ff9a2a, 0 0 6px #fff, 0 5px 0 #7a1a08, 0 8px 18px rgba(0,0,0,.6); transform:skewY(6deg); }
+#sekiyaIn.show{ animation:cutFade 1.6s ease-out forwards; }
+#sekiyaIn.show .band{ animation:skBand 1.6s cubic-bezier(.2,.9,.2,1) forwards; }
+#sekiyaIn.show .word{ animation:skWord 1.6s cubic-bezier(.2,.9,.2,1) forwards; }
+@keyframes skBand{ 0%{ transform:skewY(6deg) scaleY(0); } 18%{ transform:skewY(6deg) scaleY(1.15); } 26%{ transform:skewY(6deg) scaleY(1); } 100%{ transform:skewY(6deg) scaleY(1); } }
+@keyframes skWord{ 0%{ transform:skewY(6deg) scale(3) rotate(-8deg); opacity:0; } 16%{ transform:skewY(6deg) scale(.92) rotate(2deg); opacity:1; }
+  24%{ transform:skewY(6deg) scale(1.06) rotate(-1deg); } 32%{ transform:skewY(6deg) scale(1) rotate(0); } 85%{ opacity:1; } 100%{ transform:skewY(6deg) scale(1.1); opacity:0; } }
 .reach{ margin:0 0 12px; font-size:14px; color:rgba(243,234,214,.8); }
 .reach b{ font-family:var(--brush); font-weight:400; font-size:22px; color:var(--washi); margin-left:6px; }
 
@@ -258,7 +270,7 @@ input:focus{ outline:2px solid var(--kin); outline-offset:1px; }
 #pause{ justify-content:center; align-items:center; text-align:center; background:rgba(10,12,35,.72); }
 #pause h2{ font-family:var(--brush); font-weight:400; font-size:54px; margin:0 0 26px; }
 #err{ position:fixed; inset:0; display:grid; place-items:center; padding:30px; text-align:center; line-height:1.8; background:var(--yoru); }
-@media (prefers-reduced-motion: reduce){ #banner.show,#cutin.show,#cutin.show *,#stagein.show,#stagein.show *{ animation-duration:.01s; } }
+@media (prefers-reduced-motion: reduce){ #sekiyaIn.show,#sekiyaIn.show *,#banner.show,#cutin.show,#cutin.show *,#stagein.show,#stagein.show *{ animation-duration:.01s; } }
 @media (min-width:700px){ .screen{ padding-left:48px; } .mark{ right:48px; } }
 </style>
 </head>
@@ -271,6 +283,7 @@ input:focus{ outline:2px solid var(--kin); outline-offset:1px; }
 <div id="nearFx"></div>
 <div id="popups"></div>
 <div id="stagein"><div class="inner"><div class="act" id="stAct">第二幕</div><div class="name" id="stName">竹林の月夜</div><div class="rule"></div></div></div>
+<div id="sekiyaIn"><div class="band"></div><div class="sub">激レア看板</div><div class="word">関谷 現る！</div></div>
 <div id="cutin"><div class="band"></div><div class="slash"></div><div class="word">一閃</div></div>
 
 <div id="hud" hidden>
@@ -441,7 +454,7 @@ const store={
   get(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } },
   set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 };
-const VERSION='第17版（10月1日）';
+const VERSION='第19版（10月1日）';
 $('verTxt').textContent='いまの版：'+VERSION;
 // 番付サーバー（Google Apps Script）の受付URL
 const API_URL='https://script.google.com/macros/s/AKfycbyUC-2WnnSL9dkfJ6UBohXuiVvi_G-56M83afpw2Y4oGym2SWg2i6D6ITJbSYfABPZN/exec';
@@ -1129,6 +1142,9 @@ function updateGhosts(dt){
   for(const gh of ghosts){ if(!gh.g.visible) continue; gh.life-=dt*3; gh.mat.opacity=Math.max(0,gh.life)*.6; if(gh.life<=0) gh.g.visible=false; }
 }
 const aura=glow(0xffb340,5,.9); aura.position.y=1; aura.visible=false; ninja.add(aura);
+// 跳んでいる間は自キャラを少し透かして、前方の障害物との距離が見えるようにする
+const playerMats=[]; body.traverse(o=>{ if(o.isMesh&&!playerMats.includes(o.material)){ o.material.transparent=true; playerMats.push(o.material); } });
+let airK=0;
 const LANES=[-2.2,0,2.2];
 
 /* ================= pets (cosmetic only) ================= */
@@ -1257,9 +1273,10 @@ const BUILD={
   barrel(){
     const g=new THREE.Group();
     g.add(mesh(barrelGeo,M.barrel,0,.5,0));
-    g.add(mesh(cylGeo,M.hoop,0,.16,0,.545,.07,.545)); g.add(mesh(cylGeo,M.hoop,0,.84,0,.545,.07,.545));
-    g.add(mesh(cylGeo,M.hoop,0,1.0,0,.5,.04,.5));
+    g.add(mesh(cylGeo,hoopGlow,0,.16,0,.55,.07,.55)); g.add(mesh(cylGeo,hoopGlow,0,.84,0,.55,.07,.55));
+    g.add(mesh(cylGeo,hoopGlow,0,1.0,0,.5,.04,.5));
     g.add(mesh(planeGeo,M.sake,0,.5,.535,.5,.5,1));
+    jumpMarker(g,1.0,1.0);
     return {g,w:1.0,d:1.0,y0:0,y1:.95};
   },
   beam(){
@@ -1299,6 +1316,7 @@ const BUILD={
     for(const [y,z] of [[-.17,-.28],[-.17,.28],[.3,0]]){ const c=mesh(cylGeo,M.bamboo,0,y,z,.27,7.2,.27); c.rotation.z=Math.PI/2; r.add(c); }
     for(const x of[-2.6,0,2.6]) r.add(mesh(boxGeo,M.straw,x,.03,0,.14,1.0,.98));
     const gl=glow(0xd4ff7a,3,.45); gl.position.set(0,.6,.6); g.add(gl);
+    g.add(mesh(boxGeo,lineMat2,0,.03,.95/2+.35,6.9,.04,.08));
     return {g,w:6.9,d:.95,y0:0,y1:.88,roll:r};
   },
   mikoshi(){
@@ -1322,8 +1340,15 @@ const BUILD={
     for(const sx of[-.7,.7]) g.add(mesh(boxGeo,M.woodDark,sx,.42,0,.09,.84,.09));
     g.add(mesh(boxGeo,M.wood,0,.58,-.03,1.62,.8,.06));
     g.add(mesh(planeGeo,M.sekiya,0,.58,.005,1.5,.72,1));
-    const gl=glow(0xffc070,2.6,.55); gl.position.set(0,1.05,.2); g.add(gl);
-    return {g,w:1.5,d:.45,y0:0,y1:.95};
+    g.add(mesh(boxGeo,hoopGlow,0,.99,0,1.64,.05,.08));
+    g.add(mesh(boxGeo,M.gold,0,.18,-.01,1.64,.05,.08));
+    for(const sx of[-.81,.81]) g.add(mesh(boxGeo,M.gold,sx,.58,-.01,.05,.82,.08));
+    jumpMarker(g,1.5,.45);
+    // 天から差す金の光柱（激レア感）
+    const pillar=mesh(pillarGeo,pillarMat,0,8,0); g.add(pillar);
+    const halo=glow(0xffd27a,5.5,.85); halo.position.set(0,.7,.3); g.add(halo);
+    const sparks=[]; for(let i=0;i<5;i++){ const sp=glow(i%2?0xffe08a:0xff7a3a,.9,.95); g.add(sp); sparks.push(sp); }
+    return {g,w:1.5,d:.45,y0:0,y1:.95,sparks,pillar,halo};
   },
   onibi(){
     const g=new THREE.Group(); const b=new THREE.Group(); g.add(b);
@@ -1353,6 +1378,17 @@ function mkCart(on){
 }
 
 const obs=[], coins=[];
+// 跳ぶ障害物の目印：光る箍・地面の光だまり・手前の踏み切り線
+const hoopGlow=new THREE.MeshBasicMaterial({color:0xffb347});
+const markMat=new THREE.MeshBasicMaterial({map:glowTex,color:0xff9a3a,transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false});
+const lineMat2=new THREE.MeshBasicMaterial({color:0xffc060});
+const pillarGeo=new THREE.CylinderGeometry(.95,1.25,16,20,1,true);
+const pillarMat=new THREE.MeshBasicMaterial({color:0xffc860,transparent:true,opacity:.22,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false});
+function jumpMarker(g,w,d){
+  const pool=mesh(planeGeo,markMat,0,.04,0,w*1.9,d*2.6,1); pool.rotation.x=-Math.PI/2; g.add(pool);
+  g.add(mesh(boxGeo,lineMat2,0,.03,d/2+.35,w*1.05,.04,.08));
+  const gl=glow(0xffb050,2.2,.5); gl.position.set(0,1.15,0); g.add(gl);
+}
 // 鬼火は「下（跳ぶ）」か「上（滑る）」のどちらかに固定
 function addOnibi(x,z,high){
   const cy=high?1.58:.48;
@@ -1398,7 +1434,8 @@ function gapFn(){ const t=Math.max(.36,lerp(.95,.52,diff())-stageIdx*.035)*gapMu
 
 function spawnPattern(z){
   const d=diff(), si=stageIdx, th=si%4;
-  const list=[['single',3],['twoCarts',2.2],['allBarrels',1.4],['gate',1.3],['mixed',2],['sekiya',1.2]];
+  const list=[['single',3],['twoCarts',2.2],['allBarrels',1.4],['gate',1.3],['mixed',2]];
+  if(sekiyaReady()) list.push(['sekiya',.35]);
   if(d>.12) list.push(['mover',1.4]);
   if(d>.22) list.push(['zigzag',1.6+d*1.5]);
   if(d>.3) list.push(['oncoming',1.2+d]);
@@ -1420,7 +1457,7 @@ function spawnPattern(z){
       else addCoins(pick(others(lane)),z+4,5);
       return 0;
     }
-    case 'sekiya':{ addOb('sekiya',LANES[lane],z); addCoinArc(lane,z,7); return 0; }
+    case 'sekiya':{ lastSekiya=runTime; addOb('sekiya',LANES[lane],z); addCoinArc(lane,z,7); return 0; }
     case 'twoCarts':{ others(lane).forEach(l=>addOb('cart',LANES[l],z)); addCoins(lane,z+5,6); return 0; }
     case 'allBarrels':{ [0,1,2].forEach(l=>addOb('barrel',LANES[l],z)); addCoinArc(lane,z,7); return 0; }
     case 'gate':{ addOb('gate',0,z); addCoins(lane,z+2.2,3,true); return 0; }
@@ -1695,9 +1732,25 @@ function breakCombo(){
   if(combo>=5) popup(combo+'連で途切れた','small',null,null,null,.28);
   combo=0; mult=1; comboHud(false);
 }
+// 関谷は激レア：前の関谷から一定時間たたないと出てこない
+let lastSekiya=-999;
+function sekiyaReady(){ return runTime>20&&runTime-lastSekiya>40; }
+function sekiyaAnnounce(o){
+  o.announced=true;
+  restartAnim($('sekiyaIn'),'show'); flashEl('flashGold',600); skyBurst(6);
+  shake=Math.max(shake,reduceMotion?0:.25);
+  if(A.ctx){ const t=A.ctx.currentTime; for(let i=0;i<6;i++) taiko(t+i*.07,.5+i*.08); kane(t+.42,.9); kane(t+.56,.8);
+    [523.25,659.25,783.99,1046.5].forEach((f,i)=>osc('triangle',f,t+.45+i*.07,.4,.14)); }
+  if(navigator.vibrate) try{ navigator.vibrate([20,40,20,40,80]); }catch(e){}
+}
 function sekiyaCall(o){
-  popup('関谷！','gold',o.x,1.6,o.z-1);
-  if(A.ctx){ const t=A.ctx.currentTime; kane(t,.6); osc('triangle',523.25,t+.05,.25,.12,659.25); osc('triangle',783.99,t+.16,.35,.12); }
+  bonus+=777;
+  popup('関谷！！','big',null,null,null,.34); popup('関谷ボーナス +777','gold',null,null,null,.5);
+  skyBurst(12); flashEl('flashGold',800);
+  shockwave(o.x,1.2,o.z,false,22,0xffd27a); shockwave(o.x,.12,o.z,true,28,0xff7a3a);
+  sparks.emit(o.x,1.4,o.z,70,12,12); embers.emit(o.x,1,o.z,40,9,10);
+  sfx.fanfare(); if(A.ctx){ const t=A.ctx.currentTime; kane(t+.3,.9); kane(t+.45,.9); taiko(t+.6,1.2); }
+  addGauge(5);
 }
 function nearHud(pop){
   const c=$('nchain'); c.classList.toggle('on',nearChain>=1&&nearChainT>0);
@@ -1759,7 +1812,7 @@ function resetPlayer(){
 function startGame(m){
   if(typeof m==='string') mode=m;
   goFull(); initAudio(); clearField(); resetPlayer();
-  simT=0; lastJumpT=-9; lastSlideS=-9; kamiChain=0; kamiMax=0; kPerf=0; kGood=0; kEarly=0;
+  simT=0; lastJumpT=-9; lastSlideS=-9; lastSekiya=-999; kamiChain=0; kamiMax=0; kPerf=0; kGood=0; kEarly=0;
   runTime=0; speed=17; coinsGot=0; bannerIdx=0; startZ=P.z; nextSpawnZ=P.z-80; lastPattern='';
   stageIdx=0; loopN=0; applyTheme(0);
   gauge=0; dashT=0; graceT=0; smashed=0; dashK=0; dashUIKey=''; ghosts.forEach(g=>g.g.visible=false);
@@ -1870,12 +1923,12 @@ function petAction(){
 function kamiSpeedFn(rt){ return Math.min(62,20+rt*.24); }
 function kamiSpawn(z){
   const d=clamp(runTime/120,0,1), sp=speed;
-  const list=[['barrel',3],['beam',3],['sekiya',1.5],['log',d>.1?1.2:0],['onibi',d>.15?1.6:0],['jb',d>.2?1.5+d:0],['bj',d>.3?1.3+d:0],['bb',d>.25?1.2:0],['ss',d>.35?1:0]];
+  const list=[['barrel',3],['beam',3],['sekiya',sekiyaReady()?.45:0],['log',d>.1?1.2:0],['onibi',d>.15?1.6:0],['jb',d>.2?1.5+d:0],['bj',d>.3?1.3+d:0],['bb',d>.25?1.2:0],['ss',d>.35?1:0]];
   let tot=0; list.forEach(e=>tot+=e[1]); let r=Math.random()*tot, name='barrel';
   for(const e of list){ r-=e[1]; if(r<=0){ name=e[0]; break; } }
   switch(name){
     case 'barrel': addOb('barrel',0,z); return 0;
-    case 'sekiya': addOb('sekiya',0,z); return 0;
+    case 'sekiya': lastSekiya=runTime; addOb('sekiya',0,z); return 0;
     case 'beam': addOb(Math.random()<.5?'beam':'gate',0,z); return 0;
     case 'log':{ const lg=addOb('log',0,z,{vz:rand(4,8)+d*4}); return sp*.4; }
     case 'onibi': addOnibi(0,z,Math.random()<.5); return 0;
@@ -2241,6 +2294,8 @@ function animateNinja(h,runSpeed){
     s.position.y=1.42+i*.03+w*.035*i; s.position.x=Math.sin(P.phase*1.1-i*.7)*.04*i;
   });
   ninja.position.set(P.x,P.y,P.z);
+  airK+=((P.y>.05&&!P.dead?1:0)-airK)*Math.min(1,h*14);
+  const op=1-airK*.55; playerMats.forEach(m=>{ m.opacity=op; m.depthWrite=op>.98; });
   pShadow.position.set(P.x,.03,P.z); const sc=1.3*(1-Math.min(P.y,4)/6); pShadow.scale.set(sc,sc,1);
 }
 
@@ -2267,7 +2322,7 @@ function update(h,dt){
     if(graceT>0) graceT-=h;
     updateDashUI();
     if(nearChainT>0){ nearChainT-=dt; if(nearChainT<=0){ if(nearChain>=3) popup(nearChain+'連で途切れた','small',null,null,null,.3); nearChain=0; } nearHud(false); }
-    for(const o of obs){ if(!o.passed&&o.z>P.z+o.d/2+.35){ o.passed=true; if(state==='play'){ if(o.type==='sekiya') sekiyaCall(o); if(mode==='kami') kamiJudge(o); else checkNear(o); } } }
+    for(const o of obs){ if(!o.passed&&o.z>P.z+o.d/2+.35){ o.passed=true; if(state==='play'){ if(o.type==='sekiya'&&dashT<=0) sekiyaCall(o); if(mode==='kami') kamiJudge(o); else checkNear(o); } } }
     if(mode==='kami'){ while(kamiNextZ>P.z-125){ const len=kamiSpawn(kamiNextZ); kamiNextZ-=len+kamiGap(); } }
     else while(nextSpawnZ>P.z-125){ const len=spawnPattern(nextSpawnZ); nextSpawnZ-=len+gapFn(); }
     for(let i=obs.length-1;i>=0;i--){ const o=obs[i]; if(o.z>P.z+14){ removeOb(o); obs.splice(i,1); } }
@@ -2297,6 +2352,11 @@ function update(h,dt){
   }
   for(const o of obs){
     o.g.position.set(o.x,0,o.z); if(o.wheels&&o.vz>0&&!o.parked) o.wheels.forEach(w=>w.rotation.x+=h*8);
+    if(o.type==='sekiya'){
+      if(state==='play'&&!o.announced&&P.z-o.z<75&&P.z-o.z>0) sekiyaAnnounce(o);
+      o.sparks.forEach((sp,i)=>{ const a=worldT*2.4+i*1.256; sp.position.set(Math.cos(a)*1.1,.6+Math.sin(worldT*3+i)*.35,Math.sin(a)*.5+.2); });
+      o.halo.scale.setScalar(5+Math.sin(worldT*6)*.8); o.pillar.rotation.y+=dt*.8;
+    }
     if(o.fadeMats){
       // 近づくほど暖簾を透かして、奥の障害物を見えるようにする（くぐる高さの金の縁は不透明のまま）
       const ahead=P.z-o.z, op=clamp(.38+.62*(ahead-8)/22,.38,1);
@@ -2363,8 +2423,8 @@ function update(h,dt){
   const ang=worldT*.18;
   tPos.set(P.x+3.4+Math.sin(ang)*.6,1.9+Math.sin(ang*.7)*.2,P.z-5.4);
   tLook.set(P.x,1.25,P.z-.5);
-  pPos.set(P.x*.55,3.6+P.y*.35+dashK*.6,P.z+6.8+dashK*1.8);
-  pLook.set(P.x*.72,1.3+P.y*.3,P.z-8);
+  pPos.set(P.x*.55,3.6+P.y*.55+dashK*.6,P.z+6.8+dashK*1.8);
+  pLook.set(P.x*.72,1.3+P.y*.12,P.z-8);
   const target=isMenu()?0:1;
   camK+=(target-camK)*Math.min(1,dt*2.2);
   const e=camK*camK*(3-2*camK);
