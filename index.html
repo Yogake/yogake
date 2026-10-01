@@ -437,7 +437,7 @@ const store={
   get(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } },
   set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 };
-const VERSION='第14版（10月1日）';
+const VERSION='第15版（10月1日）';
 $('verTxt').textContent='いまの版：'+VERSION;
 // 番付サーバー（Google Apps Script）の受付URL
 const API_URL='https://script.google.com/macros/s/AKfycbyUC-2WnnSL9dkfJ6UBohXuiVvi_G-56M83afpw2Y4oGym2SWg2i6D6ITJbSYfABPZN/exec';
@@ -467,7 +467,7 @@ let best=parseInt(store.get('yogake_best','0'),10)||0;
 $('bestTitle').textContent=best;
 
 const fontReady=Promise.race([
-  (document.fonts&&document.fonts.load)?document.fonts.load('60px "Yuji Syuku"','祭酒宿灯茶福夜関湯蕎菓焼飴魚射面火'):Promise.resolve(),
+  (document.fonts&&document.fonts.load)?document.fonts.load('60px "Yuji Syuku"','祭酒宿灯茶福夜関湯蕎菓焼飴魚射面火谷！'):Promise.resolve(),
   new Promise(r=>setTimeout(r,1800))
 ]).catch(()=>{});
 fontReady.then(init);
@@ -671,6 +671,12 @@ const M={
   onibiCore:new THREE.MeshBasicMaterial({color:0xcfe9ff}),
   sake:new THREE.MeshBasicMaterial({map:labelTex('酒','#efe3c6','#1a0d08',84)}),
   seki:new THREE.MeshBasicMaterial({map:labelTex('関','#2a1a10','#ffd27a',84)}),
+  sekiya:new THREE.MeshBasicMaterial({map:canvasTex(256,128,(g,w,h)=>{
+    g.fillStyle='#3a2416'; g.fillRect(0,0,w,h);
+    g.fillStyle='#f3e6c6'; g.fillRect(9,9,w-18,h-18);
+    g.strokeStyle='#c8321e'; g.lineWidth=4; g.strokeRect(16,16,w-32,h-32);
+    g.fillStyle='#16100c'; g.font=`86px ${BRUSH}`; g.textAlign='center'; g.textBaseline='middle'; g.fillText('関谷！',w/2,h*.55);
+  })}),
   shadow:new THREE.MeshBasicMaterial({map:shadowTex,transparent:true,depthWrite:false}),
 };
 const norenMats=[
@@ -1306,6 +1312,15 @@ const BUILD={
     const front=glow(0xffe6a0,7,.85); front.position.set(0,2.2,1.8); g.add(front);
     return {g,w:3.4,d:2.6,y0:0,y1:4.4};
   },
+  sekiya(){
+    // 遊び心の立て看板「関谷！」：低いので跳んで越える
+    const g=new THREE.Group();
+    for(const sx of[-.7,.7]) g.add(mesh(boxGeo,M.woodDark,sx,.42,0,.09,.84,.09));
+    g.add(mesh(boxGeo,M.wood,0,.58,-.03,1.62,.8,.06));
+    g.add(mesh(planeGeo,M.sekiya,0,.58,.005,1.5,.72,1));
+    const gl=glow(0xffc070,2.6,.55); gl.position.set(0,1.05,.2); g.add(gl);
+    return {g,w:1.5,d:.45,y0:0,y1:.95};
+  },
   onibi(){
     const g=new THREE.Group(); const b=new THREE.Group(); g.add(b);
     b.add(mesh(sphGeo,M.onibiCore,0,0,0,.75,.9,.75));
@@ -1372,7 +1387,7 @@ function gapFn(){ return speed*Math.max(.36,lerp(.95,.52,diff())-stageIdx*.035)+
 
 function spawnPattern(z){
   const d=diff(), si=stageIdx, th=si%4;
-  const list=[['single',3],['twoCarts',2.2],['allBarrels',1.4],['gate',1.3],['mixed',2]];
+  const list=[['single',3],['twoCarts',2.2],['allBarrels',1.4],['gate',1.3],['mixed',2],['sekiya',1.2]];
   if(d>.12) list.push(['mover',1.4]);
   if(d>.22) list.push(['zigzag',1.6+d*1.5]);
   if(d>.3) list.push(['oncoming',1.2+d]);
@@ -1394,6 +1409,7 @@ function spawnPattern(z){
       else addCoins(pick(others(lane)),z+4,5);
       return 0;
     }
+    case 'sekiya':{ addOb('sekiya',LANES[lane],z); addCoinArc(lane,z,7); return 0; }
     case 'twoCarts':{ others(lane).forEach(l=>addOb('cart',LANES[l],z)); addCoins(lane,z+5,6); return 0; }
     case 'allBarrels':{ [0,1,2].forEach(l=>addOb('barrel',LANES[l],z)); addCoinArc(lane,z,7); return 0; }
     case 'gate':{ addOb('gate',0,z); addCoins(lane,z+2.2,3,true); return 0; }
@@ -1668,6 +1684,10 @@ function breakCombo(){
   if(combo>=5) popup(combo+'連で途切れた','small',null,null,null,.28);
   combo=0; mult=1; comboHud(false);
 }
+function sekiyaCall(o){
+  popup('関谷！','gold',o.x,1.6,o.z-1);
+  if(A.ctx){ const t=A.ctx.currentTime; kane(t,.6); osc('triangle',523.25,t+.05,.25,.12,659.25); osc('triangle',783.99,t+.16,.35,.12); }
+}
 function nearHud(pop){
   const c=$('nchain'); c.classList.toggle('on',nearChain>=1&&nearChainT>0);
   $('nchainN').textContent=nearChain; $('nchainBar').style.width=clamp(nearChainT/NEAR_WIN,0,1)*100+'%';
@@ -1839,11 +1859,12 @@ function petAction(){
 function kamiSpeedFn(rt){ return Math.min(62,20+rt*.24); }
 function kamiSpawn(z){
   const d=clamp(runTime/120,0,1), sp=speed;
-  const list=[['barrel',3],['beam',3],['log',d>.1?1.2:0],['onibi',d>.15?1.6:0],['jb',d>.2?1.5+d:0],['bj',d>.3?1.3+d:0],['bb',d>.25?1.2:0],['ss',d>.35?1:0]];
+  const list=[['barrel',3],['beam',3],['sekiya',1.5],['log',d>.1?1.2:0],['onibi',d>.15?1.6:0],['jb',d>.2?1.5+d:0],['bj',d>.3?1.3+d:0],['bb',d>.25?1.2:0],['ss',d>.35?1:0]];
   let tot=0; list.forEach(e=>tot+=e[1]); let r=Math.random()*tot, name='barrel';
   for(const e of list){ r-=e[1]; if(r<=0){ name=e[0]; break; } }
   switch(name){
     case 'barrel': addOb('barrel',0,z); return 0;
+    case 'sekiya': addOb('sekiya',0,z); return 0;
     case 'beam': addOb(Math.random()<.5?'beam':'gate',0,z); return 0;
     case 'log':{ const lg=addOb('log',0,z,{vz:rand(4,8)+d*4}); return sp*.4; }
     case 'onibi': addOb('onibi',0,z,{ph:rand(0,6.28),w0:rand(1.8,2.6)+d}); return 0;
@@ -2228,7 +2249,7 @@ function update(h,dt){
     if(graceT>0) graceT-=h;
     updateDashUI();
     if(nearChainT>0){ nearChainT-=dt; if(nearChainT<=0){ if(nearChain>=3) popup(nearChain+'連で途切れた','small',null,null,null,.3); nearChain=0; } nearHud(false); }
-    for(const o of obs){ if(!o.passed&&o.z>P.z+o.d/2+.35){ o.passed=true; if(state==='play'){ if(mode==='kami') kamiJudge(o); else checkNear(o); } } }
+    for(const o of obs){ if(!o.passed&&o.z>P.z+o.d/2+.35){ o.passed=true; if(state==='play'){ if(o.type==='sekiya') sekiyaCall(o); if(mode==='kami') kamiJudge(o); else checkNear(o); } } }
     if(mode==='kami'){ while(kamiNextZ>P.z-125){ const len=kamiSpawn(kamiNextZ); kamiNextZ-=len+kamiGap(); } }
     else while(nextSpawnZ>P.z-125){ const len=spawnPattern(nextSpawnZ); nextSpawnZ-=len+gapFn(); }
     for(let i=obs.length-1;i>=0;i--){ const o=obs[i]; if(o.z>P.z+14){ removeOb(o); obs.splice(i,1); } }
