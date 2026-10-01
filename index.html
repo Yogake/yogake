@@ -60,6 +60,7 @@ input:focus{ outline:2px solid var(--kin); outline-offset:1px; }
 .icon{ width:44px; height:44px; border-radius:50%; border:1px solid rgba(243,234,214,.28); background:rgba(15,20,51,.45);
   color:var(--washi); display:grid; place-items:center; padding:0; cursor:pointer; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
 .icon svg{ width:20px; height:20px; }
+#retryHud{ margin-right:6px; opacity:.85; }
 .icon:focus-visible,.btn:focus-visible{ outline:2px solid var(--kin); outline-offset:3px; }
 
 #dashBtn{ position:fixed; right:calc(18px + env(safe-area-inset-right,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 28px);
@@ -281,6 +282,9 @@ input:focus{ outline:2px solid var(--kin); outline-offset:1px; }
     <span class="stagebar"><span id="stageTxt">第一幕</span><span class="bar"><i id="stageBar"></i></span></span>
   </div>
   <div class="tools">
+    <button class="icon" id="retryHud" aria-label="最初からやり直す">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>
+    </button>
     <button class="icon" id="fsBtn" aria-label="全画面にする">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
     </button>
@@ -437,7 +441,7 @@ const store={
   get(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } },
   set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 };
-const VERSION='第16版（10月1日）';
+const VERSION='第17版（10月1日）';
 $('verTxt').textContent='いまの版：'+VERSION;
 // 番付サーバー（Google Apps Script）の受付URL
 const API_URL='https://script.google.com/macros/s/AKfycbyUC-2WnnSL9dkfJ6UBohXuiVvi_G-56M83afpw2Y4oGym2SWg2i6D6ITJbSYfABPZN/exec';
@@ -2131,6 +2135,13 @@ $('retryBtn').addEventListener('click',()=>startGame(mode));
 $('titleBtn').addEventListener('click',toTitle);
 $('quitBtn').addEventListener('click',()=>{ if(A.ctx) A.ctx.resume(); toTitle(); });
 $('pauseBtn').addEventListener('click',pause);
+// 走行中にすぐ最初から：その回で集めた小判は持ち帰り、自己ベストと番付は記録しない
+$('retryHud').addEventListener('click',()=>{
+  if(state!=='play') return;
+  const earned=mode==='kami'?kPerf:coinsGot;
+  if(earned>0){ wallet+=earned; saveWallet(); }
+  startGame(mode);
+});
 $('resumeBtn').addEventListener('click',resume);
 $('fsBtn').addEventListener('click',toggleFull);
 $('dashBtn').addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
