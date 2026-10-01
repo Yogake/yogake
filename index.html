@@ -283,7 +283,6 @@ input:focus{ outline:2px solid var(--kin); outline-offset:1px; }
 <div id="nearFx"></div>
 <div id="popups"></div>
 <div id="stagein"><div class="inner"><div class="act" id="stAct">第二幕</div><div class="name" id="stName">竹林の月夜</div><div class="rule"></div></div></div>
-<div id="sekiyaIn"><div class="band"></div><div class="sub">激レア看板</div><div class="word">関谷 現る！</div></div>
 <div id="cutin"><div class="band"></div><div class="slash"></div><div class="word">一閃</div></div>
 
 <div id="hud" hidden>
@@ -454,7 +453,7 @@ const store={
   get(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } },
   set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 };
-const VERSION='第19版（10月1日）';
+const VERSION='第20版（10月1日）';
 $('verTxt').textContent='いまの版：'+VERSION;
 // 番付サーバー（Google Apps Script）の受付URL
 const API_URL='https://script.google.com/macros/s/AKfycbyUC-2WnnSL9dkfJ6UBohXuiVvi_G-56M83afpw2Y4oGym2SWg2i6D6ITJbSYfABPZN/exec';
@@ -850,10 +849,10 @@ function makeHouse(){
 }
 function makeString(i,count){
   const g=new THREE.Group(); const pts=[];
-  for(let x=-5.6;x<=5.61;x+=.4) pts.push(new THREE.Vector3(x,5.7-.9*(1-(x/5.6)*(x/5.6)),0));
+  for(let x=-5.6;x<=5.61;x+=.4) pts.push(new THREE.Vector3(x,6.9-.9*(1-(x/5.6)*(x/5.6)),0));
   g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x14100c})));
   for(let j=0;j<count;j++){
-    const x=-4.4+j*(8.8/(count-1)), y=5.7-.9*(1-(x/5.6)*(x/5.6))-.55;
+    const x=-4.4+j*(8.8/(count-1)), y=6.9-.9*(1-(x/5.6)*(x/5.6))-.55;
     const l=makeLantern(KANJI[(i+j)%KANJI.length],-Math.PI/2,2.4); l.scale.setScalar(.42); l.position.set(x,y,0); g.add(l);
   }
   g.add(lightPool(0,0,9,7));
@@ -932,10 +931,10 @@ function makeStall(){
   const CYC=34*3.4, pil=[], nuki=[], kasa=[], kasa2=[];
   for(let i=0;i<34;i++){
     const z=20-i*3.4;
-    pil.push({x:-4.0,y:3,z,sx:.24,sy:6,sz:.24}); pil.push({x:4.0,y:3,z,sx:.24,sy:6,sz:.24});
-    nuki.push({x:0,y:5.0,z,sx:9.2,sy:.26,sz:.3});
-    kasa2.push({x:0,y:5.75,z,sx:10.2,sy:.26,sz:.42});
-    kasa.push({x:0,y:6.05,z,sx:10.8,sy:.34,sz:.52});
+    pil.push({x:-4.0,y:3.8,z,sx:.24,sy:7.6,sz:.24}); pil.push({x:4.0,y:3.8,z,sx:.24,sy:7.6,sz:.24});
+    nuki.push({x:0,y:6.6,z,sx:9.2,sy:.26,sz:.3});
+    kasa2.push({x:0,y:7.35,z,sx:10.2,sy:.26,sz:.42});
+    kasa.push({x:0,y:7.65,z,sx:10.8,sy:.34,sz:.52});
   }
   sets[3].insts.push(new InstRing(cylGeo,M.shuBright,pil,CYC));
   sets[3].insts.push(new InstRing(boxGeo,M.shuBright,nuki,CYC));
@@ -1737,18 +1736,17 @@ let lastSekiya=-999;
 function sekiyaReady(){ return runTime>20&&runTime-lastSekiya>40; }
 function sekiyaAnnounce(o){
   o.announced=true;
-  restartAnim($('sekiyaIn'),'show'); flashEl('flashGold',600); skyBurst(6);
-  shake=Math.max(shake,reduceMotion?0:.25);
+  skyBurst(4);  // 夜空の花火と音だけ。画面は覆わない
   if(A.ctx){ const t=A.ctx.currentTime; for(let i=0;i<6;i++) taiko(t+i*.07,.5+i*.08); kane(t+.42,.9); kane(t+.56,.8);
     [523.25,659.25,783.99,1046.5].forEach((f,i)=>osc('triangle',f,t+.45+i*.07,.4,.14)); }
   if(navigator.vibrate) try{ navigator.vibrate([20,40,20,40,80]); }catch(e){}
 }
 function sekiyaCall(o){
   bonus+=777;
-  popup('関谷！！','big',null,null,null,.34); popup('関谷ボーナス +777','gold',null,null,null,.5);
-  skyBurst(12); flashEl('flashGold',800);
-  shockwave(o.x,1.2,o.z,false,22,0xffd27a); shockwave(o.x,.12,o.z,true,28,0xff7a3a);
-  sparks.emit(o.x,1.4,o.z,70,12,12); embers.emit(o.x,1,o.z,40,9,10);
+  popup('関谷！ +777','gold',null,null,null,.16);
+  skyBurst(8);
+  shockwave(o.x,.12,o.z,true,18,0xff7a3a);
+  sparks.emit(o.x,1.4,o.z+1,40,8,10);
   sfx.fanfare(); if(A.ctx){ const t=A.ctx.currentTime; kane(t+.3,.9); kane(t+.45,.9); taiko(t+.6,1.2); }
   addGauge(5);
 }
@@ -2423,7 +2421,7 @@ function update(h,dt){
   const ang=worldT*.18;
   tPos.set(P.x+3.4+Math.sin(ang)*.6,1.9+Math.sin(ang*.7)*.2,P.z-5.4);
   tLook.set(P.x,1.25,P.z-.5);
-  pPos.set(P.x*.55,3.6+P.y*.55+dashK*.6,P.z+6.8+dashK*1.8);
+  pPos.set(P.x*.55,3.6+P.y*.25+dashK*.6,P.z+6.8+dashK*1.8);
   pLook.set(P.x*.72,1.3+P.y*.12,P.z-8);
   const target=isMenu()?0:1;
   camK+=(target-camK)*Math.min(1,dt*2.2);
