@@ -108,6 +108,8 @@ input:focus{ outline:2px solid var(--kin); outline-offset:1px; }
 #combo .num{ display:inline-block; font-size:48px; color:var(--washi); text-shadow:0 0 18px rgba(243,197,91,.85); }
 #combo .ren{ font-size:18px; margin-left:3px; }
 #combo .mult{ display:block; margin-top:6px; font-size:26px; color:var(--kin); text-shadow:0 0 14px rgba(255,140,60,.95); }
+#combo .cbar{ display:block; margin:6px 0 0 auto; width:80px; height:3px; border-radius:2px; background:rgba(243,197,91,.2); overflow:hidden; }
+#combo .cbar i{ display:block; height:100%; width:0; background:var(--kin); box-shadow:0 0 8px var(--kin); }
 #combo.pop .num{ animation:cpop .22s ease-out; }
 #combo.tier .mult{ animation:tierPop .7s ease-out; }
 @keyframes cpop{ 0%{ transform:scale(1.5); } 100%{ transform:scale(1); } }
@@ -310,7 +312,7 @@ input:focus{ outline:2px solid var(--kin); outline-offset:1px; }
 </div>
 <div id="nchain"><span class="t">紙一重<b id="nchainN">0</b>連</span><span class="bar"><i id="nchainBar"></i></span></div>
 <div id="kchain" class="kchainBox"><span class="n" id="kchainN">0</span><span class="u">連</span><span class="lbl">紙一重</span></div>
-<div id="combo"><span class="num" id="comboNum">0</span><span class="ren">連</span><span class="mult" id="comboMult"></span></div>
+<div id="combo"><span class="num" id="comboNum">0</span><span class="ren">連</span><span class="mult" id="comboMult"></span><span class="cbar"><i id="comboBar"></i></span></div>
 <button id="dashBtn" hidden aria-label="一閃（障害物を粉砕して突進）"><span class="core">一閃<small id="dashCnt">0/50</small></span></button>
 <div id="banner"></div>
 
@@ -453,7 +455,7 @@ const store={
   get(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } },
   set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 };
-const VERSION='第20版（10月1日）';
+const VERSION='第21版（10月1日）';
 $('verTxt').textContent='いまの版：'+VERSION;
 // 番付サーバー（Google Apps Script）の受付URL
 const API_URL='https://script.google.com/macros/s/AKfycbyUC-2WnnSL9dkfJ6UBohXuiVvi_G-56M83afpw2Y4oGym2SWg2i6D6ITJbSYfABPZN/exec';
@@ -483,7 +485,7 @@ let best=parseInt(store.get('yogake_best','0'),10)||0;
 $('bestTitle').textContent=best;
 
 const fontReady=Promise.race([
-  (document.fonts&&document.fonts.load)?document.fonts.load('60px "Yuji Syuku"','祭酒宿灯茶福夜関湯蕎菓焼飴魚射面火谷！'):Promise.resolve(),
+  (document.fonts&&document.fonts.load)?document.fonts.load('60px "Yuji Syuku"','祭酒宿灯茶福夜関湯蕎菓焼飴魚射面火谷！壹両光'):Promise.resolve(),
   new Promise(r=>setTimeout(r,1800))
 ]).catch(()=>{});
 fontReady.then(init);
@@ -695,6 +697,23 @@ const M={
   })}),
   shadow:new THREE.MeshBasicMaterial({map:shadowTex,transparent:true,depthWrite:false}),
 };
+// 小判：金の楕円に、ござ目（横筋）と「壹両」の刻印
+const kobanFace=canvasTex(256,256,(g,w,h)=>{
+  const r=g.createRadialGradient(110,100,10,128,128,130);
+  r.addColorStop(0,'#fff6c4'); r.addColorStop(.45,'#f4cc4e'); r.addColorStop(1,'#a9741a');
+  g.fillStyle=r; g.fillRect(0,0,w,h);
+  g.fillStyle='rgba(120,78,10,.28)'; for(let y=18;y<h;y+=9) g.fillRect(0,y,w,2.5);
+  g.strokeStyle='rgba(110,70,8,.75)'; g.lineWidth=7; g.beginPath(); g.arc(128,128,118,0,Math.PI*2); g.stroke();
+  g.save(); g.translate(128,0); g.scale(1.5,1);
+  g.fillStyle='#fff3c0'; g.beginPath(); g.ellipse(0,104,22,52,0,0,Math.PI*2); g.fill();
+  g.fillStyle='#7a4a08'; g.font=`38px ${BRUSH}`; g.textAlign='center'; g.textBaseline='middle';
+  g.fillText('壹',0,82); g.fillText('両',0,124);
+  g.lineWidth=3; g.strokeStyle='#7a4a08';
+  for(const y of[32,222]){ g.beginPath(); g.arc(0,y,11,0,Math.PI*2); g.stroke(); g.beginPath(); g.arc(0,y,4,0,Math.PI*2); g.fill(); }
+  g.font=`30px ${BRUSH}`; g.fillText('光',0,176);
+  g.restore();
+});
+const coinMats=[new THREE.MeshBasicMaterial({color:0xc8902a}),new THREE.MeshBasicMaterial({map:kobanFace}),new THREE.MeshBasicMaterial({map:kobanFace})];
 const norenMats=[
   ['#1d2f6b','#f3ead6','湯'],['#6b1d2a','#f3ead6','蕎'],['#1f4a3a','#f3ead6','菓'],['#2a2a2e','#ffd27a','酒']
 ].map(a=>new THREE.MeshLambertMaterial({map:noren(a[0],a[1],a[2]),side:THREE.DoubleSide,emissive:0x221810}));
@@ -707,7 +726,7 @@ const cyl7=new THREE.CylinderGeometry(1,1,1,7);
 const coneGeo=new THREE.ConeGeometry(1,1,4);
 const sphGeo=new THREE.SphereGeometry(0.5,16,12);
 const barrelGeo=new THREE.CylinderGeometry(0.52,0.52,1,16);
-const coinGeo=new THREE.CylinderGeometry(0.4,0.4,0.08,22); coinGeo.rotateX(Math.PI/2); coinGeo.scale(0.68,1,1);
+const coinGeo=new THREE.CylinderGeometry(0.44,0.44,0.07,28); coinGeo.rotateX(Math.PI/2); coinGeo.scale(0.66,1,1);
 function mesh(geo,mat,x,y,z,sx,sy,sz){
   const m=new THREE.Mesh(geo,mat); m.position.set(x||0,y||0,z||0);
   if(sx!==undefined) m.scale.set(sx,sy,sz); return m;
@@ -1333,21 +1352,22 @@ const BUILD={
     const front=glow(0xffe6a0,7,.85); front.position.set(0,2.2,1.8); g.add(front);
     return {g,w:3.4,d:2.6,y0:0,y1:4.4};
   },
-  sekiya(){
-    // 遊び心の立て看板「関谷！」：低いので跳んで越える
-    const g=new THREE.Group();
-    for(const sx of[-.7,.7]) g.add(mesh(boxGeo,M.woodDark,sx,.42,0,.09,.84,.09));
-    g.add(mesh(boxGeo,M.wood,0,.58,-.03,1.62,.8,.06));
-    g.add(mesh(planeGeo,M.sekiya,0,.58,.005,1.5,.72,1));
-    g.add(mesh(boxGeo,hoopGlow,0,.99,0,1.64,.05,.08));
-    g.add(mesh(boxGeo,M.gold,0,.18,-.01,1.64,.05,.08));
-    for(const sx of[-.81,.81]) g.add(mesh(boxGeo,M.gold,sx,.58,-.01,.05,.82,.08));
-    jumpMarker(g,1.5,.45);
+  sekiya(opt){
+    // 遊び心の立て看板「関谷！」：低いので跳んで越える。疾走モードでは3レーンまたぐ横長版
+    const g=new THREE.Group(), wide=!!(opt&&opt.wide), W=wide?6.6:1.5;
+    for(const sx of(wide?[-3.2,-1.1,1.1,3.2]:[-.7,.7])) g.add(mesh(boxGeo,M.woodDark,sx,.42,0,.09,.84,.09));
+    g.add(mesh(boxGeo,M.wood,0,.58,-.03,W+.12,.8,.06));
+    if(wide){ for(const x of[-2.2,0,2.2]) g.add(mesh(planeGeo,M.sekiya,x,.58,.005,2.05,.72,1)); }
+    else g.add(mesh(planeGeo,M.sekiya,0,.58,.005,1.5,.72,1));
+    g.add(mesh(boxGeo,hoopGlow,0,.99,0,W+.14,.05,.08));
+    g.add(mesh(boxGeo,M.gold,0,.18,-.01,W+.14,.05,.08));
+    for(const sx of[-(W/2+.06),W/2+.06]) g.add(mesh(boxGeo,M.gold,sx,.58,-.01,.05,.82,.08));
+    jumpMarker(g,W,.45);
     // 天から差す金の光柱（激レア感）
     const pillar=mesh(pillarGeo,pillarMat,0,8,0); g.add(pillar);
     const halo=glow(0xffd27a,5.5,.85); halo.position.set(0,.7,.3); g.add(halo);
     const sparks=[]; for(let i=0;i<5;i++){ const sp=glow(i%2?0xffe08a:0xff7a3a,.9,.95); g.add(sp); sparks.push(sp); }
-    return {g,w:1.5,d:.45,y0:0,y1:.95,sparks,pillar,halo};
+    return {g,w:wide?6.9:1.5,d:.45,y0:0,y1:.95,sparks,pillar,halo,wide};
   },
   onibi(){
     const g=new THREE.Group(); const b=new THREE.Group(); g.add(b);
@@ -1394,12 +1414,12 @@ function addOnibi(x,z,high){
   return addOb('onibi',x,z,{cy,y0:cy-.42,y1:cy+.42,ph:rand(0,6.28),high});
 }
 function addOb(type,x,z,extra){
-  const o=BUILD[type](); o.type=type; o.x=x; o.z=z; o.vz=0; o.parked=false; o.passed=false;
+  const o=BUILD[type](extra||{}); o.type=type; o.x=x; o.z=z; o.vz=0; o.parked=false; o.passed=false;
   Object.assign(o,extra||{});
   o.g.position.set(x,0,z); scene.add(o.g); obs.push(o); return o;
 }
 function addCoin(x,y,z){
-  const m=new THREE.Mesh(coinGeo,M.gold); m.position.set(x,y,z); m.rotation.y=Math.random()*3;
+  const m=new THREE.Mesh(coinGeo,coinMats); m.position.set(x,y,z); m.rotation.y=Math.random()*3;
   scene.add(m); coins.push({m,x,y,z});
 }
 function addCoins(lane,z,n,low){ for(let i=0;i<n;i++) addCoin(LANES[lane],low?.45:.9,z-i*2.2); }
@@ -1434,7 +1454,7 @@ function gapFn(){ const t=Math.max(.36,lerp(.95,.52,diff())-stageIdx*.035)*gapMu
 function spawnPattern(z){
   const d=diff(), si=stageIdx, th=si%4;
   const list=[['single',3],['twoCarts',2.2],['allBarrels',1.4],['gate',1.3],['mixed',2]];
-  if(sekiyaReady()) list.push(['sekiya',.35]);
+  if(sekiyaReady()) list.push(['sekiya',.8]);
   if(d>.12) list.push(['mover',1.4]);
   if(d>.22) list.push(['zigzag',1.6+d*1.5]);
   if(d>.3) list.push(['oncoming',1.2+d]);
@@ -1456,7 +1476,7 @@ function spawnPattern(z){
       else addCoins(pick(others(lane)),z+4,5);
       return 0;
     }
-    case 'sekiya':{ lastSekiya=runTime; addOb('sekiya',LANES[lane],z); addCoinArc(lane,z,7); return 0; }
+    case 'sekiya':{ lastSekiya=runTime; addOb('sekiya',0,z,{wide:true}); addCoinArc(lane,z,7); return 0; }
     case 'twoCarts':{ others(lane).forEach(l=>addOb('cart',LANES[l],z)); addCoins(lane,z+5,6); return 0; }
     case 'allBarrels':{ [0,1,2].forEach(l=>addOb('barrel',LANES[l],z)); addCoinArc(lane,z,7); return 0; }
     case 'gate':{ addOb('gate',0,z); addCoins(lane,z+2.2,3,true); return 0; }
@@ -1714,8 +1734,10 @@ function addGauge(n){
     shockwave(P.x,.12,P.z,true,12,0xffd27a); sparks.emit(P.x,1,P.z,40,7,9);
   }
 }
+const COMBO_WIN=1.8;  // この秒数以内に次の小判を取ればコンボが続く
+let comboT=0;
 function collectCoin(c){
-  coinsGot++; combo++; if(combo>maxCombo) maxCombo=combo;
+  coinsGot++; combo++; comboT=COMBO_WIN; if(combo>maxCombo) maxCombo=combo;
   const nm=combo>=50?5:combo>=30?3:combo>=10?2:1;
   if(nm>mult){
     mult=nm; popup('×'+mult,'big',null,null,null,.36); sfx.tier(); restartAnim($('combo'),'tier');
@@ -1729,7 +1751,7 @@ function collectCoin(c){
 }
 function breakCombo(){
   if(combo>=5) popup(combo+'連で途切れた','small',null,null,null,.28);
-  combo=0; mult=1; comboHud(false);
+  combo=0; mult=1; comboT=0; comboHud(false);
 }
 // 関谷は激レア：前の関谷から一定時間たたないと出てこない
 let lastSekiya=-999;
@@ -1814,7 +1836,7 @@ function startGame(m){
   runTime=0; speed=17; coinsGot=0; bannerIdx=0; startZ=P.z; nextSpawnZ=P.z-80; lastPattern='';
   stageIdx=0; loopN=0; applyTheme(0);
   gauge=0; dashT=0; graceT=0; smashed=0; dashK=0; dashUIKey=''; ghosts.forEach(g=>g.g.visible=false);
-  combo=0; maxCombo=0; mult=1; bonus=0; nearCount=0; slowT=0; nearChain=0; nearChainT=0; maxNearChain=0; nearHud(false); lastMs=0; bestBroken=false; lastLaneT=-9; lastSlideT=-9;
+  combo=0; comboT=0; maxCombo=0; mult=1; bonus=0; nearCount=0; slowT=0; nearChain=0; nearChainT=0; maxNearChain=0; nearHud(false); lastMs=0; bestBroken=false; lastLaneT=-9; lastSlideT=-9;
   updateDashUI(); comboHud(false);
   if(mode==='kami'){
     applyTheme(3); A.theme=4; scene.fog.density=.032; ambLight.intensity=.3; hemi.intensity=.25; kamiTierColor();
@@ -2233,10 +2255,10 @@ function stepPlay(h){
     if(o.type==='mover'){ o.ph+=o.w0*h; o.x=Math.sin(o.ph)*o.amp; }
     if(o.type==='onibi'){ o.ph+=3*h; o.body.position.y=o.cy+Math.sin(o.ph)*.07; }  // 当たり判定の高さは固定、見た目だけ少しゆらぐ
   }
-  if(mode==='kami'){
+  {
     for(const o of obs){
       if(!o.entered&&o.z>=P.z-(o.d+.5)/2){
-        o.entered=true; o.tIn=simT;
+        o.entered=true; o.tIn=simT; o.xOver=Math.abs(o.x-P.x)<(o.w+.62)/2;
         o.act=P.y>.001?'jump':P.slideT>0?'slide':'none';
         o.tA=o.act==='jump'?lastJumpT:o.act==='slide'?lastSlideS:0; o.yAt=o.y1;
       }
@@ -2252,22 +2274,23 @@ function stepPlay(h){
   }
   for(let i=coins.length-1;i>=0;i--){
     const c=coins[i];
-    const dashGrab=dashT>0&&Math.abs(c.z-P.z)<1.4;
-    if(dashGrab||(Math.abs(c.z-P.z)<1.0&&Math.abs(c.x-P.x)<.9&&c.y>P.y-.4&&c.y<P.y+ph+.4)){
+    if(c.mag) continue;
+    if((Math.abs(c.z-P.z)<1.0&&Math.abs(c.x-P.x)<.9&&c.y>P.y-.4&&c.y<P.y+ph+.4)){
       scene.remove(c.m); coins.splice(i,1); collectCoin(c);
     }
   }
 }
 function checkNear(o){
   if(dashT>0||graceT>0||state!=='play') return;
-  const ph=P.slideT>0?.72:1.62;
-  const xCur=Math.abs(o.x-P.x)<(o.w+.62)/2;
   let near=false;
-  if(xCur){
-    if(P.y>=o.y1&&P.y-o.y1<.3) near=true;
-    else if(P.slideT>0&&runTime-lastSlideT<.15&&o.y0>=ph) near=true;
-    else if(P.slideT<=0&&o.y0>=ph&&o.y0-(P.y+ph)<.18) near=true;
-  } else if(runTime-lastLaneT<.16&&Math.abs(o.x-fromX)<(o.w+.62)/2) near=true;
+  // 跳ぶ・滑る：紙一重モードと同じく「限界から0.1秒以内に動いたか」で判定
+  if(o.entered&&o.xOver&&o.act!=='none'){
+    const ex=(o.tIn-o.tA)-(o.act==='jump'?tReach(o.yAt):0);
+    if(ex<=.10) near=true;
+  }
+  // 横に避ける：ぎりぎりでレーンを移った
+  const xCur=Math.abs(o.x-P.x)<(o.w+.62)/2;
+  if(!near&&!xCur&&runTime-lastLaneT<.16&&Math.abs(o.x-fromX)<(o.w+.62)/2) near=true;
   if(near) nearMiss(o);
 }
 
@@ -2315,6 +2338,8 @@ function update(h,dt){
       if(ghostTimer<=0){ spawnGhost(); ghostTimer=.035; }
       for(let i=obs.length-1;i>=0;i--){ if(obs[i].z>P.z-26) smash(obs[i],i,true); }
       if(Math.random()<.5) embers.emit(P.x,rand(.3,1.6),P.z+.5,2,2,2,8);
+      // 一閃中は前方の小判を吸い寄せて自動で取る
+      for(const c of coins){ if(!c.mag&&c.z<P.z+2&&c.z>P.z-45){ c.mag=true; c.mt=0; c.sx=c.x; c.sy=c.y; c.sz=c.z-P.z; } }
       if(dashT<=0){ dashT=0; graceT=.8; shockwave(P.x,1.2,P.z-3,false,14,0xff8a3a); }
     }
     if(graceT>0) graceT-=h;
@@ -2324,9 +2349,8 @@ function update(h,dt){
     if(mode==='kami'){ while(kamiNextZ>P.z-125){ const len=kamiSpawn(kamiNextZ); kamiNextZ-=len+kamiGap(); } }
     else while(nextSpawnZ>P.z-125){ const len=spawnPattern(nextSpawnZ); nextSpawnZ-=len+gapFn(); }
     for(let i=obs.length-1;i>=0;i--){ const o=obs[i]; if(o.z>P.z+14){ removeOb(o); obs.splice(i,1); } }
-    let missed=false;
-    for(let i=coins.length-1;i>=0;i--){ if(coins[i].z>P.z+1.5){ scene.remove(coins[i].m); coins.splice(i,1); missed=true; } }
-    if(missed&&combo>0&&state==='play') breakCombo();
+    for(let i=coins.length-1;i>=0;i--){ if(coins[i].z>P.z+1.5&&!coins[i].mag){ scene.remove(coins[i].m); coins.splice(i,1); } }
+    if(comboT>0&&state==='play'){ comboT-=dt; if(comboT<=0&&combo>0) breakCombo(); $('comboBar').style.width=clamp(comboT/COMBO_WIN,0,1)*100+'%'; }
     // stages & milestones
     const d=dist();
     const si=Math.floor(d/3000);
@@ -2352,7 +2376,7 @@ function update(h,dt){
     o.g.position.set(o.x,0,o.z); if(o.wheels&&o.vz>0&&!o.parked) o.wheels.forEach(w=>w.rotation.x+=h*8);
     if(o.type==='sekiya'){
       if(state==='play'&&!o.announced&&P.z-o.z<75&&P.z-o.z>0) sekiyaAnnounce(o);
-      o.sparks.forEach((sp,i)=>{ const a=worldT*2.4+i*1.256; sp.position.set(Math.cos(a)*1.1,.6+Math.sin(worldT*3+i)*.35,Math.sin(a)*.5+.2); });
+      o.sparks.forEach((sp,i)=>{ const a=worldT*2.4+i*1.256; sp.position.set(Math.cos(a)*(o.wide?3.4:1.1),.6+Math.sin(worldT*3+i)*.35,Math.sin(a)*.5+.2); });
       o.halo.scale.setScalar(5+Math.sin(worldT*6)*.8); o.pillar.rotation.y+=dt*.8;
     }
     if(o.fadeMats){
@@ -2362,6 +2386,12 @@ function update(h,dt){
     }
   }
   for(const c of coins) c.m.rotation.y+=dt*4;
+  for(let i=coins.length-1;i>=0;i--){
+    const c=coins[i]; if(!c.mag) continue;
+    c.mt+=dt; const k=Math.min(1,c.mt/.28), e=k*k;
+    c.x=lerp(c.sx,P.x,e); c.y=lerp(c.sy,P.y+1,e); c.z=P.z+lerp(c.sz,0,e); c.m.position.set(c.x,c.y,c.z);
+    if(k>=1){ scene.remove(c.m); coins.splice(i,1); if(state==='play') collectCoin(c); }
+  }
   if(state!=='over') animateNinja(h,runSpeed);
   updatePet(dt,state==='over'||state==='dying'?0:runSpeed);
   if(state==='shop'&&preview){ previewWrap.rotation.y+=dt*.7; animPet(preview,worldT,worldT*7,true); }
